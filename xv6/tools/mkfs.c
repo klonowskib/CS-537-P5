@@ -342,25 +342,25 @@ iappend(uint inum, void *xp, int n)
     fbn = off / 512;
     assert(fbn < MAXFILE);
     if(fbn < NDIRECT){
-      if(xint(din.addrs[fbn]) == 0){
-        din.addrs[fbn] = xint(freeblock++);
+      if(xint(din.addrs[fbn*2]) == 0){
+        din.addrs[fbn*2] = xint(freeblock++);
         usedblocks++;
       }
-      x = xint(din.addrs[fbn]);
+      x = xint(din.addrs[fbn*2]);
     } else {
-      if(xint(din.addrs[NDIRECT]) == 0){
+      if(xint(din.addrs[NDIRECT*2]) == 0){
         // printf("allocate indirect block\n");
-        din.addrs[NDIRECT] = xint(freeblock++);
+        din.addrs[NDIRECT*2] = xint(freeblock++);
         usedblocks++;
       }
       // printf("read indirect block\n");
-      rsect(xint(din.addrs[NDIRECT]), (char*)indirect);
-      if(indirect[fbn - NDIRECT] == 0){
-        indirect[fbn - NDIRECT] = xint(freeblock++);
+      rsect(xint(din.addrs[NDIRECT*2]), (char*)indirect);
+      if(indirect[(fbn - NDIRECT)*2] == 0){
+        indirect[(fbn - NDIRECT)*2] = xint(freeblock++);
         usedblocks++;
-        wsect(xint(din.addrs[NDIRECT]), (char*)indirect);
+        wsect(xint(din.addrs[NDIRECT*2]), (char*)indirect);
       }
-      x = xint(indirect[fbn-NDIRECT]);
+      x = xint(indirect[(fbn-NDIRECT)*2]);
     }
     n1 = min(n, (fbn + 1) * 512 - off);
     rsect(x, buf);

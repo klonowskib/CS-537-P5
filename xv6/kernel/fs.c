@@ -28,8 +28,7 @@ static void itrunc(struct inode*);
 static void
 readsb(int dev, struct superblock *sb)
 {
-  struct buf *bp;
-  
+  struct buf *bp;  
   bp = bread(dev, 1);
   memmove(sb, bp->data, sizeof(*sb));
   brelse(bp);
@@ -188,7 +187,7 @@ iupdate(struct inode *ip)
   dip->type = ip->type;
   dip->major = ip->major;
   dip->minor = ip->minor;
-  dip->nlink = ip->nlink;
+  dip->nlink = ip->nlink; 
   dip->size = ip->size;
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
   bwrite(bp);

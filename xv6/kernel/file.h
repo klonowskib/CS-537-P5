@@ -24,10 +24,9 @@ struct inode {
   short minor;
   short nlink;
   uint size;
-  //Removed the indirect block from the end of the addrs array
-  uint addrs[NDIRECT*2];
-  //placed the indirect block here 
-  uint indirect; 
+  uint addrs[NDIRECT];
+  uint checksums[NDIRECT];
+  uint indirect;
 };
 
 #define I_BUSY 0x1

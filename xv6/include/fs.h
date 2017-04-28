@@ -18,8 +18,8 @@ struct superblock {
   uint ninodes;      // Number of inodes.
 };
 
-#define NDIRECT 6 //NDIRECT was halved, because with each pointer taking twice the space and the size constraint, only half the number of block pointers can be held
-#define NINDIRECT (BSIZE / sizeof(uint)*2) //must be changed
+#define NDIRECT 6
+#define NINDIRECT (BSIZE / (sizeof(uint) * 2))
 #define MAXFILE (NDIRECT + NINDIRECT)
 
 // On-disk inode structure
@@ -29,7 +29,8 @@ struct dinode {
   short minor;          // Minor device number (T_DEV only)
   short nlink;          // Number of links to inode in file system
   uint size;            // Size of file (bytes)
-  uint addrs[NDIRECT*2]; // Data block addresses  
+  uint addrs[NDIRECT];   // Data block addresses
+  uint checksums[NDIRECT];
   uint indirect;
 };
 
@@ -52,19 +53,5 @@ struct dirent {
   ushort inum;
   char name[DIRSIZ];
 };
-
-#define ADLER32_BASE 65521U
-
-static inline uint adler32(void* data, uint len)
-{
-  uint i, a = 1, b = 0;
-
-  for (i = 0; i < len; i++) {
-    a = (a + ((uchar*)data)[i]) % ADLER32_BASE;
-    b = (b + a) % ADLER32_BASE;
-  }
-
-  return (b << 16) | a;
-}
 
 #endif // _FS_H_

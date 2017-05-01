@@ -192,7 +192,7 @@ iupdate(struct inode *ip)
   dip->size = ip->size;
   dip->indirect = ip -> indirect;
   memmove(dip->checksums, ip->checksums, sizeof(ip->checksums));
-  memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
+  memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));  
   bwrite(bp);
   brelse(bp);
 }
@@ -336,8 +336,10 @@ bmap(struct inode *ip, uint bn)
   struct buf *bp;
 
   if(bn < NDIRECT){
-    if((addr = ip->addrs[bn]) == 0)
+    if((addr = ip->addrs[bn]) == 0) {
       ip->addrs[bn] = addr = balloc(ip->dev);
+      //ip->checksums[bn] =  adler32(ip->addrs, BSIZE);
+    }
     return addr;
   }
   bn -= NDIRECT;
@@ -426,9 +428,14 @@ readi(struct inode *ip, char *dst, uint off, uint n)
     if(sector_number == 0){ //failed to find block
       panic("readi: trying to read a block that was never allocated");
     }
-    
-    bp = bread(ip->dev, sector_number);
+    bp = bread(ip->dev, sector_number);    
     m = min(n - tot, BSIZE - off%BSIZE);
+    uint checksum = adler32(bp->data,  BSIZE);
+    //cprintf("tot %d  m %d  bp->data%d  sector_number%d\n",tot, m, bp->data, sector_number);
+    if(checksum != ip->checksums[off/BSIZE + 1]) {
+      cprintf("checksum: %d stored checksum: %d \n", checksum, ip->checksums[off/BSIZE]);
+      cprintf("Error: checksum mismatch, block %d\n", off/BSIZE);
+    }
     memmove(dst, bp->data + off%BSIZE, m);
     brelse(bp);
   }
@@ -441,13 +448,11 @@ writei(struct inode *ip, char *src, uint off, uint n)
 {
   uint tot, m;
   struct buf *bp;
-
   if(ip->type == T_DEV){
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].write)
       return -1;
     return devsw[ip->major].write(ip, src, n);
   }
-
   if(off > ip->size || off + n < off)
     return -1;
   if(off + n > MAXFILE*BSIZE)
@@ -469,8 +474,10 @@ writei(struct inode *ip, char *src, uint off, uint n)
 
   if(n > 0 && off > ip->size){
     ip->size = off;
-    iupdate(ip);
+//    iupdate(ip);
   }
+  iupdate(ip);
+  
   return n;
 }
 

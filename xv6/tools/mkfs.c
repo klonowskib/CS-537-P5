@@ -88,8 +88,8 @@ mkfs(int nblocks, int ninodes, int size) {
 
   memset(buf, 0, sizeof(buf));
   memmove(buf, &sb, sizeof(sb));
+  
   wsect(1, buf);
-
 
   return 0;
 }
@@ -218,19 +218,16 @@ main(int argc, char *argv[])
   }
 
   mkfs(995, 200, 1024);
-
   root_dir = opendir(argv[2]);
-
   root_inode = ialloc(T_DIR);
   assert(root_inode == ROOTINO);
-
   r = add_dir(root_dir, root_inode, root_inode);
   if (r != 0) {
     exit(EXIT_FAILURE);
-  }
-
+  }		
+  
   balloc(usedblocks);
-
+  
   exit(0);
 }
 
@@ -259,7 +256,6 @@ winode(uint inum, struct dinode *ip)
   char buf[512];
   uint bn;
   struct dinode *dip;
-
   bn = i2b(inum);
   rsect(bn, buf);
   dip = ((struct dinode*)buf) + (inum % IPB);
@@ -345,8 +341,9 @@ iappend(uint inum, void *xp, int n)
       if(xint(din.addrs[fbn]) == 0){
         din.addrs[fbn] = xint(freeblock++);
         usedblocks++;
-      }
+      } 
       x = xint(din.addrs[fbn]);
+      din.checksums[fbn] = adler32((void*)buf, BSIZE);
     } else {
       if(xint(din.indirect) == 0){
         // printf("allocate indirect block\n");
@@ -359,9 +356,10 @@ iappend(uint inum, void *xp, int n)
         indirect[fbn - NDIRECT] = xint(freeblock++);
         usedblocks++;
         wsect(xint(din.indirect), (char*)indirect);
-      }
+      } 
       x = xint(indirect[fbn-NDIRECT]);
     }
+
     n1 = min(n, (fbn + 1) * 512 - off);
     rsect(x, buf);
     bcopy(p, buf + off - (fbn * 512), n1);
@@ -370,6 +368,7 @@ iappend(uint inum, void *xp, int n)
     off += n1;
     p += n1;
   }
+
   din.size = xint(off);
   winode(inum, &din);
 }

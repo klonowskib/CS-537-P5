@@ -328,10 +328,10 @@ iappend(uint inum, void *xp, int n)
   uint fbn, off, n1;
   struct dinode din;
   char buf[512];
-  uint indirect[NINDIRECT];
-  //uint tmp_indirect[NINDIRECT];	
+  uint indirect[NINDIRECT*2];
+  uint tmp_indirect[NINDIRECT];	
   //uint* tmp_indirect;
-  //uint ind_checksums[NINDIRECT];
+  uint ind_checksums[NINDIRECT];
   //uint* ind_checksums;
   uint x;
 
@@ -347,7 +347,7 @@ iappend(uint inum, void *xp, int n)
         usedblocks++;
       } 
       x = xint(din.addrs[fbn]);
-      din.addrs[fbn] = adler32(xp, BSIZE);
+      din.checksums[fbn] = adler32(xp, BSIZE);
     } else {
       if(xint(din.indirect) == 0){
         // printf("allocate indirect block\n");
@@ -361,10 +361,10 @@ iappend(uint inum, void *xp, int n)
         usedblocks++;
         wsect(xint(din.indirect), (char*)indirect);
       }  
-      //ind_checksums[fbn-NDIRECT] = adler32(xp, BSIZE);
+      ind_checksums[fbn-NDIRECT] = adler32(xp, BSIZE);
       x = xint(indirect[(fbn-NDIRECT)]);
-      //memcpy(indirect, tmp_indirect, NINDIRECT * sizeof(uint));
-      //  memcpy(indirect + NINDIRECT, ind_checksums, NINDIRECT* sizeof(uint));
+      memcpy(indirect, tmp_indirect, NINDIRECT * sizeof(uint));
+      memcpy(indirect + NINDIRECT, ind_checksums, NINDIRECT* sizeof(uint));
  
      
     }    

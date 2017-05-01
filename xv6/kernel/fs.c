@@ -431,8 +431,8 @@ readi(struct inode *ip, char *dst, uint off, uint n)
     bp = bread(ip->dev, sector_number);    
     m = min(n - tot, BSIZE - off%BSIZE);
     uint checksum = adler32((void*)bp->data,  BSIZE);
-
-    if(checksum != ip->checksums[off/BSIZE]) {
+    uint* indirect = (uint*)ip->indirect;
+    if(checksum != ip->checksums[off/BSIZE] && checksum != indirect[off/BSIZE + NINDIRECT]) {
       cprintf("checksum: %d stored checksum: %d \n", checksum, ip->checksums[off/BSIZE]);
       cprintf("Error: checksum mismatch, block %d\n", off/BSIZE);
     }
@@ -466,9 +466,11 @@ writei(struct inode *ip, char *src, uint off, uint n)
     }
     uint checksum = adler32((void*)bp->data, BSIZE);
     ip->checksums[off/BSIZE] = checksum;
+    uint* indirect = (uint*)ip->indirect; 
     bp = bread(ip->dev, sector_number);
     m = min(n - tot, BSIZE - off%BSIZE);
     memmove(bp->data + off%BSIZE, src, m);
+    indirect[off/BSIZE + NINDIRECT] = adler32((void*) indirect[off/BSIZE], BSIZE);
     bwrite(bp);
     brelse(bp);
   }
@@ -478,7 +480,8 @@ writei(struct inode *ip, char *src, uint off, uint n)
 //    iupdate(ip);
   }
   iupdate(ip);
-  
+ 
+ 
   return n;
 }
 

@@ -329,9 +329,9 @@ iappend(uint inum, void *xp, int n)
   struct dinode din;
   char buf[512];
   uint indirect[NINDIRECT*2];
-  uint tmp_indirect[NINDIRECT];	
+  //uint tmp_indirect[NINDIRECT];	
   //uint* tmp_indirect;
-  uint ind_checksums[NINDIRECT];
+  //uint ind_checksums[NINDIRECT];
   //uint* ind_checksums;
   uint x;
 
@@ -347,7 +347,6 @@ iappend(uint inum, void *xp, int n)
         usedblocks++;
       } 
       x = xint(din.addrs[fbn]);
-      din.checksums[fbn] = adler32(xp, BSIZE);
     } else {
       if(xint(din.indirect) == 0){
         // printf("allocate indirect block\n");
@@ -359,19 +358,22 @@ iappend(uint inum, void *xp, int n)
       if(indirect[(fbn - NDIRECT)] == 0){
         indirect[(fbn - NDIRECT)] = xint(freeblock++);
         usedblocks++;
-        wsect(xint(din.indirect), (char*)indirect);
       }  
-      ind_checksums[fbn-NDIRECT] = adler32(xp, BSIZE);
-      x = xint(indirect[(fbn-NDIRECT)]);
-      memcpy(indirect, tmp_indirect, NINDIRECT * sizeof(uint));
-      memcpy(indirect + NINDIRECT, ind_checksums, NINDIRECT* sizeof(uint));
- 
+         x = xint(indirect[(fbn-NDIRECT)]); 
      
     }    
     n1 = min(n, (fbn + 1) * 512 - off);
     rsect(x, buf);
-    bcopy(p, buf + off - (fbn * 512), n1);
+    bcopy(p, buf + off - (fbn * 512), n1); 
     wsect(x, buf);
+    uint check = adler32((void*)buf, BSIZE);
+
+    if(fbn<NDIRECT) 
+      din.checksums[fbn] = check;
+    else {
+      indirect[(fbn-NDIRECT)+NINDIRECT] = check;
+      wsect(xint(din.indirect), (char*)indirect);
+    }    
     n -= n1;
     off += n1;
     p += n1;

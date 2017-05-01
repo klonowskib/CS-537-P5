@@ -359,7 +359,7 @@ iappend(uint inum, void *xp, int n)
       } 
       x = xint(indirect[fbn-NDIRECT]);
     }
-
+    
     n1 = min(n, (fbn + 1) * 512 - off);
     rsect(x, buf);
     bcopy(p, buf + off - (fbn * 512), n1);

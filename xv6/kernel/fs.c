@@ -192,7 +192,8 @@ iupdate(struct inode *ip)
   dip->size = ip->size;
   dip->indirect = ip -> indirect;
   memmove(dip->checksums, ip->checksums, sizeof(ip->checksums));
-  memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));  
+  memmove(dip->addrs, ip->addrs, sizeof(ip->addrs)); 
+//  ip->checksums[fbn] = adler32(bp->data, BSIZE);
   bwrite(bp);
   brelse(bp);
 }
@@ -464,7 +465,8 @@ writei(struct inode *ip, char *src, uint off, uint n)
       n = tot; //return number of bytes written so far
       break;
     }
-    
+    //uint checksum = adler32(bp->data, BSIZE);
+    //ip->checksums[off/BSIZE] = checksum;
     bp = bread(ip->dev, sector_number);
     m = min(n - tot, BSIZE - off%BSIZE);
     memmove(bp->data + off%BSIZE, src, m);

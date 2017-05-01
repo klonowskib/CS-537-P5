@@ -464,8 +464,8 @@ writei(struct inode *ip, char *src, uint off, uint n)
       n = tot; //return number of bytes written so far
       break;
     }
-//    uint checksum = adler32(bp->data, BSIZE);
-//    ip->checksums[off/BSIZE] = checksum;
+    uint checksum = adler32((void*)bp->data, BSIZE);
+    ip->checksums[off/BSIZE] = checksum;
     bp = bread(ip->dev, sector_number);
     m = min(n - tot, BSIZE - off%BSIZE);
     memmove(bp->data + off%BSIZE, src, m);

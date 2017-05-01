@@ -343,7 +343,8 @@ iappend(uint inum, void *xp, int n)
         usedblocks++;
       } 
       x = xint(din.addrs[fbn]);
-      din.checksums[fbn] = adler32((void*)buf, BSIZE);
+      din.checksums[fbn] = adler32(xp, BSIZE);
+      printf("%d\n", fbn);
     } else {
       if(xint(din.indirect) == 0){
         // printf("allocate indirect block\n");

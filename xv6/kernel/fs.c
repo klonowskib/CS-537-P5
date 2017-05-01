@@ -193,7 +193,7 @@ iupdate(struct inode *ip)
   dip->indirect = ip -> indirect;
   memmove(dip->checksums, ip->checksums, sizeof(ip->checksums));
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs)); 
-//  ip->checksums[fbn] = adler32(bp->data, BSIZE);
+
   bwrite(bp);
   brelse(bp);
 }
@@ -339,7 +339,6 @@ bmap(struct inode *ip, uint bn)
   if(bn < NDIRECT){
     if((addr = ip->addrs[bn]) == 0) {
       ip->addrs[bn] = addr = balloc(ip->dev);
-      //ip->checksums[bn] =  adler32(ip->addrs, BSIZE);
     }
     return addr;
   }
@@ -431,9 +430,9 @@ readi(struct inode *ip, char *dst, uint off, uint n)
     }
     bp = bread(ip->dev, sector_number);    
     m = min(n - tot, BSIZE - off%BSIZE);
-    uint checksum = adler32(bp->data,  BSIZE);
-    //cprintf("tot %d  m %d  bp->data%d  sector_number%d\n",tot, m, bp->data, sector_number);
-    if(checksum != ip->checksums[off/BSIZE + 1]) {
+    uint checksum = adler32((void*)bp->data,  BSIZE);
+
+    if(checksum != ip->checksums[off/BSIZE]) {
       cprintf("checksum: %d stored checksum: %d \n", checksum, ip->checksums[off/BSIZE]);
       cprintf("Error: checksum mismatch, block %d\n", off/BSIZE);
     }
@@ -465,8 +464,8 @@ writei(struct inode *ip, char *src, uint off, uint n)
       n = tot; //return number of bytes written so far
       break;
     }
-    //uint checksum = adler32(bp->data, BSIZE);
-    //ip->checksums[off/BSIZE] = checksum;
+//    uint checksum = adler32(bp->data, BSIZE);
+//    ip->checksums[off/BSIZE] = checksum;
     bp = bread(ip->dev, sector_number);
     m = min(n - tot, BSIZE - off%BSIZE);
     memmove(bp->data + off%BSIZE, src, m);

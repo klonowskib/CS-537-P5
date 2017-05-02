@@ -12,7 +12,8 @@ struct stat {
   int dev;     // Device number
   uint ino;    // Inode number on device
   short nlink; // Number of links to file
-  uint size;   // Size of file in bytes
+  uint size;   // Size of file in byte
+  uint checksum;
 };
 
 #endif // _STAT_H_

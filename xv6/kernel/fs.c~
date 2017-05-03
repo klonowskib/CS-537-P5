@@ -456,10 +456,11 @@ readi(struct inode *ip, char *dst, uint off, uint n)
         cprintf("Error: checksum mismatch, block %d\n", off/BSIZE);
         return -1;
       }
-    brelse(bp2); 
-    }
     memmove(dst, bp->data + off%BSIZE, m);
     brelse(bp);
+
+   
+    }
   }
   //cprintf("leaving\n");
   return n;

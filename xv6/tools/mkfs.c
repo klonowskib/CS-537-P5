@@ -359,21 +359,22 @@ iappend(uint inum, void *xp, int n)
         indirect[(fbn - NDIRECT)] = xint(freeblock++);
         usedblocks++;
       }  
-         x = xint(indirect[(fbn-NDIRECT)]); 
+      x = xint(indirect[(fbn-NDIRECT)]); 
      
     }    
     n1 = min(n, (fbn + 1) * 512 - off);
     rsect(x, buf);
     bcopy(p, buf + off - (fbn * 512), n1); 
     wsect(x, buf);
-    uint check = adler32((void*)buf, BSIZE);
 
+    uint check = adler32((void*)buf, BSIZE);
     if(fbn<NDIRECT) 
-      din.checksums[fbn] = check;
+      din.addrs[fbn+NDIRECT] = check;
     else {
       indirect[(fbn-NDIRECT)+NINDIRECT] = check;
       wsect(xint(din.indirect), (char*)indirect);
     }    
+
     n -= n1;
     off += n1;
     p += n1;

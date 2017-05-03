@@ -191,7 +191,6 @@ iupdate(struct inode *ip)
   dip->nlink = ip->nlink;
   dip->size = ip->size;
   dip->indirect = ip -> indirect;
-  memmove(dip->checksums, ip->checksums, sizeof(ip->checksums));
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs)); 
 
   bwrite(bp);
@@ -269,7 +268,6 @@ ilock(struct inode *ip)
     ip->nlink = dip->nlink;
     ip->size = dip->size;
     ip->indirect = dip->indirect;
-    memmove(ip->checksums, dip->checksums, sizeof(ip->checksums));
     memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
     brelse(bp);
     ip->flags |= I_VALID;
@@ -401,10 +399,10 @@ stati(struct inode *ip, struct stat *st)
   st->type = ip->type;
   st->nlink = ip->nlink;
   st->size = ip->size;
-  st->checksum = ip->checksums[0];
-  int i = 1;
+  st->checksum = ip->addrs[NDIRECT];
+  int i = 0;
   while(i < NDIRECT) {
-    st->checksum = ip->checksums[i] ^ st->checksum;
+    st->checksum = ip->addrs[i+NDIRECT] ^ st->checksum;
     i++;
   }
   if(ip->addrs[0] == 0) st->checksum = 0; 
@@ -417,6 +415,7 @@ readi(struct inode *ip, char *dst, uint off, uint n)
   uint tot, m;
   struct buf *bp;
 
+  //uint bn = off/BSIZE;
   if(ip->type == T_DEV){
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].read)
       return -1;
@@ -429,48 +428,50 @@ readi(struct inode *ip, char *dst, uint off, uint n)
     n = ip->size - off;
 
   for(tot=0; tot<n; tot+=m, off+=m, dst+=m){
-    cprintf("%d %x\n",off/BSIZE, ip);
     uint sector_number = bmap(ip, off/BSIZE);
     if(sector_number == 0)  //failed to find block
       panic("readi: trying to read a block that was never allocated");
-    bp = bread(ip->dev, sector_number);
-    //cprintf("bread\n");
-    m = min(n - tot, BSIZE - off%BSIZE);
 
+
+    bp = bread(ip->dev, sector_number);
+    struct buf *bp1 = bread(ip->dev, ip->indirect);
+//    bp1 = bread(ip->dev, ip->indirect);
+    m = min(n - tot, BSIZE - off%BSIZE);
     uint checksum = adler32((void*)bp->data,  BSIZE);
     if(off/BSIZE < NDIRECT) {
     //printf("%x %x \n", ip->checksums[off/BSIZE], checksum);
-      if( checksum != ip->checksums[off/BSIZE]) {
+      if( checksum != ip->addrs[off/BSIZE+ NDIRECT]) {
         cprintf("Error: checksum mismatch, block %d\n", off/BSIZE);
+        brelse(bp);
+        brelse(bp1);
         return -1;
       }
     }
-    else {
-     cprintf("indirect check\n");
+    if(off/BSIZE - NDIRECT < NINDIRECT) {
      uint *a;
-     struct buf *bp2 = bread(ip->dev, ip->indirect);
-     a = (uint*)bp2->data;
+     a = (uint*)bp1->data;
      uint check1 = a[(off/BSIZE-NDIRECT)+NINDIRECT];
      // cprintf("%x %x \n", check1, checksum);
      if (checksum !=  check1) {
         cprintf("Error: checksum mismatch, block %d\n", off/BSIZE);
+        brelse(bp);
+        brelse(bp1);
         return -1;
       }
-    brelse(bp2); 
     }
     memmove(dst, bp->data + off%BSIZE, m);
     brelse(bp);
+    brelse(bp1);
   }
   //cprintf("leaving\n");
   return n;
 }
-
 // Write data to inode.
 int
 writei(struct inode *ip, char *src, uint off, uint n)
 {
   uint tot, m;
-  struct buf *bp;
+  struct buf *bp, *bp1;
   if(ip->type == T_DEV){
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].write)
       return -1;
@@ -487,27 +488,33 @@ writei(struct inode *ip, char *src, uint off, uint n)
       n = tot; //return number of bytes written so far
       break;
     } 
+    uint bn = off/BSIZE;
     bp = bread(ip->dev, sector_number);
+    bp1 = bread(ip->dev, ip->indirect);
     m = min(n - tot, BSIZE - off%BSIZE);
-    uint checksum = adler32((void*)bp->data, BSIZE);
-    if(off/BSIZE < NDIRECT) {
-      ip->checksums[off/BSIZE] = checksum;
-    }
-    else {
-      uint *a;
-      struct buf *bp2 = bread(ip->dev, ip->indirect);
-      a = (uint*)bp2->data;
-      a[(off/BSIZE-NDIRECT)+NINDIRECT] = checksum;
-    }
+
+    uint check = adler32((void*)bp->data, BSIZE);
+    if(bn < NDIRECT)
+      ip->addrs[bn + NDIRECT] = check;
+    bn -= NDIRECT;
+    if(bn < NINDIRECT) {     
+      uint *a = (uint*)bp1->data;
+      a[bn + NINDIRECT] = check;
+    } 
+    
     memmove(bp->data + off%BSIZE, src, m);
+    memmove(bp1->data + off%BSIZE, src, m);
     bwrite(bp);
+    bwrite(bp1);
     brelse(bp);
+    brelse(bp1);
   }
   if(n > 0 && off > ip->size){
     ip->size = off;
-    iupdate(ip);
+  //  iupdate(ip);
   } 
-  //iupdate(ip);
+  iupdate(ip);
+
   return n;
 }
 
@@ -562,24 +569,22 @@ dirlink(struct inode *dp, char *name, uint inum)
   struct inode *ip;
 
   // Check that name is not present.
-  if((ip = dirlookup(dp, name, 0)) != 0){
+  if((ip = dirlookup(dp, name, 0)) != 0) {
     iput(ip);
     return -1;
   }
 
   // Look for an empty dirent.
-  for(off = 0; off < dp->size; off += sizeof(de)){
+  for(off = 0; off < dp->size; off += sizeof(de)) {
     if(readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
       panic("dirlink read");
     if(de.inum == 0)
       break;
   }
-
   strncpy(de.name, name, DIRSIZ);
   de.inum = inum;
   if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
     panic("dirlink");
-  
   return 0;
 }
 

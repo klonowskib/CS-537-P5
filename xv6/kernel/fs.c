@@ -440,7 +440,7 @@ readi(struct inode *ip, char *dst, uint off, uint n)
     if(bn < NDIRECT) {
     //printf("%x %x \n", ip->checksums[off/BSIZE], checksum);
       if( checksum != ip->addrs[off/BSIZE+ NDIRECT]) {
-        cprintf("Error: checksum mismatch, block %d\n", off/BSIZE);
+        cprintf("Error: checksum mismatch, block %d\n", sector_number);
         brelse(bp);
         brelse(bp1);
         return -1;
@@ -453,7 +453,8 @@ readi(struct inode *ip, char *dst, uint off, uint n)
      uint check1 = a[bn+NINDIRECT];
      // cprintf("%x %x \n", check1, checksum);
      if (checksum !=  check1) {
-        cprintf("Error: checksum mismatch, block %d\n", bn);
+        cprintf("Error: checksum mismatch, block %d\n", sector_number);
+        cprintf("check: %x  stored: %x\n", checksum, check1);
         brelse(bp);
         brelse(bp1);
         return -1;

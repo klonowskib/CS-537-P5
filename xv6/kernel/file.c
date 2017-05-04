@@ -4,7 +4,8 @@
 #include "fs.h"
 #include "file.h"
 #include "spinlock.h"
-
+#include "stat.h"
+#include "buf.h"
 struct devsw devsw[NDEV];
 struct {
   struct spinlock lock;
@@ -76,6 +77,23 @@ int
 filestat(struct file *f, struct stat *st)
 {
   if(f->type == FD_INODE){
+    st->checksum = 0;
+    int i = 0;
+    while (i < NDIRECT) {
+     st->checksum = st->checksum ^ f->ip->addrs[i+NDIRECT];
+     i++;
+    }
+    i = 0;
+    struct buf *bp = bread(f->ip->dev, f->ip->indirect);
+    while (i<NINDIRECT) {
+      uint *a;
+      a = (uint*)bp->data;
+      uint check1 = a[i+NINDIRECT];
+      st->checksum ^= check1;
+      i++;
+    }
+    brelse(bp);
+ 
     ilock(f->ip);
     stati(f->ip, st);
     iunlock(f->ip);

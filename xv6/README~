@@ -45,3 +45,7 @@ To run xv6, you can use Bochs or QEMU, both PC simulators.
 Bochs makes debugging easier, but QEMU is much faster. 
 To run in Bochs, run "make bochs" and then type "c" at the bochs prompt.
 To run in QEMU, run "make qemu".
+
+
+
+shazam

@@ -15,4 +15,5 @@ struct stat {
   uint size;   // Size of file in byte
   uint checksum;
 };
+
 #endif // _STAT_H_
